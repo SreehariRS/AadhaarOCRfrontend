@@ -1,6 +1,9 @@
 'use client';
-import axios from 'axios';
 import { useState, useRef } from 'react';
+import FileInput from './ui/FileInput';
+import FormError from './ui/FormError';
+import PrimaryButton from './ui/PrimaryButton';
+import { ApiService } from '../services/apiService';
 
 interface Props {
   setOcrResult: (result: any) => void;
@@ -34,16 +37,11 @@ const UploadForm: React.FC<Props> = ({ setOcrResult, setImages }) => {
       return;
     }
 
-    // Check file sizes (5MB limit)
     if (frontFile.size > 5 * 1024 * 1024 || backFile.size > 5 * 1024 * 1024) {
       setError('File size must be less than 5MB.');
       setLoading(false);
       return;
     }
-
-    const formData = new FormData();
-    formData.append('front', frontFile);
-    formData.append('back', backFile);
 
     try {
       // Create preview URLs
@@ -51,27 +49,13 @@ const UploadForm: React.FC<Props> = ({ setOcrResult, setImages }) => {
       const backUrl = URL.createObjectURL(backFile);
       setImages({ front: frontUrl, back: backUrl });
 
-      console.log('Sending request to /api/upload');
-      const response = await axios.post('/api/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 60000, // 60 second timeout
-      });
-
-      console.log('Response received:', response.data);
-      setOcrResult(response.data);
+      console.log('Sending request via ApiService');
+      const response = await ApiService.uploadImages(frontFile, backFile);
+      console.log('Response received:', response);
+      setOcrResult(response);
     } catch (err: any) {
       console.error('Upload error:', err);
-      
-      if (err.response) {
-        // Server responded with error status
-        setError(err.response.data?.error || 'Server error occurred');
-      } else if (err.code === 'ECONNABORTED') {
-        setError('Request timed out. Please try again.');
-      } else if (err.code === 'ERR_NETWORK') {
-        setError('Network error. Please check your connection.');
-      } else {
-        setError('Failed to process images. Please try again.');
-      }
+      setError(err.message || 'Failed to process images. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -79,36 +63,12 @@ const UploadForm: React.FC<Props> = ({ setOcrResult, setImages }) => {
 
   return (
     <form onSubmit={handleSubmit} className="bg-white p-6 rounded shadow-md w-full max-w-md">
-      <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">Front Image</label>
-        <input 
-          type="file" 
-          accept="image/jpeg,image/png" 
-          ref={frontRef} 
-          className="w-full border border-gray-300 rounded px-3 py-2" 
-        />
-      </div>
-      <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">Back Image</label>
-        <input 
-          type="file" 
-          accept="image/jpeg,image/png" 
-          ref={backRef} 
-          className="w-full border border-gray-300 rounded px-3 py-2" 
-        />
-      </div>
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
-        </div>
-      )}
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 disabled:bg-gray-400 transition-colors"
-      >
+      <FileInput label="Front Image" accept="image/jpeg,image/png" inputRef={frontRef} />
+      <FileInput label="Back Image" accept="image/jpeg,image/png" inputRef={backRef} />
+      <FormError error={error} />
+      <PrimaryButton type="submit" disabled={loading}>
         {loading ? 'Processing...' : 'Upload & Process'}
-      </button>
+      </PrimaryButton>
     </form>
   );
 };

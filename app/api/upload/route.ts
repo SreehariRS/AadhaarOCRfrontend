@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import axios from 'axios';
+import { ApiService } from '../../../services/apiService';
 
 export async function POST(req: NextRequest) {
   try {
     console.log('API route called');
-    
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:5000';
-    console.log('Backend URL:', backendUrl);
-    
-    // First, test if backend is reachable
+
+    // Test if backend is reachable
     try {
-      const healthCheck = await axios.get(`${backendUrl}/health`, { timeout: 5000 });
-      console.log('Backend health check:', healthCheck.data);
+      const healthCheck = await ApiService.checkBackendHealth();
+      console.log('Backend health check:', healthCheck);
     } catch (healthError: any) {
       console.error('Backend health check failed:', healthError.message);
       
@@ -22,22 +19,26 @@ export async function POST(req: NextRequest) {
       }
       
       return NextResponse.json({ 
-        error: `Cannot connect to backend server at ${backendUrl}. Error: ${healthError.message}` 
-      }, { status: 503 });
+        error: `Cannot connect to backend server. Error: ${healthError.message}` 
+        }, { status: 503 });
     }
     
     const formData = await req.formData();
     console.log('FormData received, sending to backend...');
     
-    const response = await axios.post(`${backendUrl}/api/ocr/process`, formData, {
-      headers: { 
-        'Content-Type': 'multipart/form-data',
-      },
-      timeout: 30000, // 30 second timeout
-    });
+    const frontFile = formData.get('front') as File;
+    const backFile = formData.get('back') as File;
+
+    if (!frontFile || !backFile) {
+      return NextResponse.json({ 
+        error: 'Please upload both front and back images.' 
+        }, { status: 400 });
+    }
+
+    const response = await ApiService.uploadImages(frontFile, backFile);
     
-    console.log('Backend response received:', response.data);
-    return NextResponse.json(response.data);
+    console.log('Backend response received:', response);
+    return NextResponse.json(response);
     
   } catch (error: any) {
     console.error('API route error:', error);
