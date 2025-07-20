@@ -182,7 +182,7 @@ const UploadForm: React.FC<Props> = ({ setOcrResult, setImages }) => {
                     <li>• Supported formats: JPEG, PNG</li>
                     <li>• Maximum file size: 5MB per image</li>
                     <li>• Ensure images are clear and well-lit</li>
-                    <li>• All text should be clearly visible</li>
+                    <li>• Upload valid Aadhaar card front and back images</li>
                   </ul>
                 </div>
               </div>
